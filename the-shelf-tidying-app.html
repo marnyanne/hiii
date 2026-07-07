@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Shelf — a tidying companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEEAE1;
+    --paper-2:#E4DFD3;
+    --ink:#20302A;
+    --ink-soft:#4A594F;
+    --jade:#3F6B5A;
+    --jade-deep:#2C4C40;
+    --gold:#C79A46;
+    --coral:#BD6248;
+    --line: rgba(32,48,42,0.14);
+    --card: #F7F4EC;
+    --shadow: 0 1px 2px rgba(32,48,42,0.06), 0 8px 24px -12px rgba(32,48,42,0.18);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 90% -10%, rgba(199,154,70,0.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(63,107,90,0.12), transparent 55%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .font-display{font-family:'Fraunces',serif;}
+  .font-mono{font-family:'IBM Plex Mono',monospace;}
+
+  #app{max-width:520px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:40px;}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    background:linear-gradient(180deg, var(--paper) 70%, transparent);
+    padding:18px 20px 10px;
+  }
+  .topbar-row{display:flex;align-items:center;justify-content:space-between;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-mark{
+    width:30px;height:30px;border-radius:8px;
+    background:var(--jade-deep);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.15);
+  }
+  .brand-mark svg{width:16px;height:16px;}
+  .brand-name{font-family:'Fraunces',serif; font-weight:600; font-size:17px; letter-spacing:0.2px;}
+  .stat-pill{
+    display:flex; align-items:center; gap:6px;
+    background:var(--card); border:1px solid var(--line);
+    padding:6px 10px 6px 8px; border-radius:999px;
+    box-shadow:var(--shadow);
+  }
+  .stat-pill .n{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:13px;}
+  .stat-pill .flame{font-size:13px;}
+
+  main{padding:0 20px;}
+
+  /* ---------- section headers ---------- */
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 6px 2px;
+  }
+  h1.title{font-family:'Fraunces',serif; font-size:28px; font-weight:600; margin:0 0 4px; line-height:1.15;}
+  .sub{color:var(--ink-soft); font-size:14px; margin:0 0 18px; line-height:1.5;}
+
+  /* ---------- joy ring ---------- */
+  .ring-card{
+    background:var(--card); border:1px solid var(--line); border-radius:20px;
+    padding:20px; display:flex; align-items:center; gap:18px; box-shadow:var(--shadow);
+    margin-bottom:22px;
+  }
+  .ring-wrap{position:relative; width:84px; height:84px; flex:none;}
+  .ring-wrap svg{transform:rotate(-90deg);}
+  .ring-label{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .ring-label .pct{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:16px;}
+  .ring-label .pct-sub{font-size:9px; color:var(--ink-soft); letter-spacing:0.05em;}
+  .ring-meta{flex:1;}
+  .ring-meta .room-name{font-family:'Fraunces',serif; font-weight:600; font-size:16px; margin-bottom:2px;}
+  .ring-meta .room-line{font-size:12.5px; color:var(--ink-soft);}
+  .level-tag{
+    display:inline-flex; align-items:center; gap:5px; margin-top:8px;
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:0.04em;
+    background:rgba(63,107,90,0.12); color:var(--jade-deep);
+    padding:4px 9px; border-radius:999px; border:1px solid rgba(63,107,90,0.2);
+  }
+
+  /* ---------- shelf ---------- */
+  .shelf{display:flex; flex-direction:column; gap:12px; margin-bottom:26px;}
+  .box-card{
+    position:relative;
+    background:var(--card); border:1px solid var(--line); border-radius:18px;
+    padding:16px 16px 16px 14px; display:flex; align-items:center; gap:14px;
+    box-shadow:var(--shadow); cursor:pointer; transition:transform .15s ease, box-shadow .15s ease;
+    overflow:hidden;
+  }
+  .box-card:active{transform:scale(0.985);}
+  .box-card.locked{opacity:0.5; cursor:not-allowed;}
+  .box-card.current{border-color:rgba(63,107,90,0.4); box-shadow:0 0 0 3px rgba(63,107,90,0.10), var(--shadow);}
+  .box-card.done{background:linear-gradient(135deg, rgba(199,154,70,0.10), var(--card) 55%);}
+
+  .box-num{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft);
+    width:20px; flex:none;
+  }
+  .box-icon{
+    width:44px;height:44px;border-radius:12px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--jade-deep); color:var(--paper);
+  }
+  .box-icon svg{width:22px;height:22px;}
+  .box-icon.locked-icon{background:#C9C4B6; color:#8b8577;}
+  .box-body{flex:1; min-width:0;}
+  .box-title{font-family:'Fraunces',serif; font-weight:600; font-size:15.5px;}
+  .box-sub{font-size:12px; color:var(--ink-soft); margin-top:1px;}
+  .box-progress-track{height:5px; border-radius:99px; background:var(--paper-2); margin-top:8px; overflow:hidden;}
+  .box-progress-fill{height:100%; background:var(--jade); border-radius:99px; transition:width .4s ease;}
+  .box-seal{
+    width:26px;height:26px; flex:none; border-radius:50%;
+    background:var(--gold); display:flex; align-items:center; justify-content:center;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.15);
+  }
+  .box-seal svg{width:13px;height:13px; color:#3a2c0d;}
+  .lock-badge{width:16px;height:16px; flex:none; color:var(--ink-soft);}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    font-family:'Inter',sans-serif; font-weight:600; font-size:14px;
+    border:none; border-radius:12px; padding:13px 18px; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    transition: transform .1s ease, filter .15s ease;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:var(--jade-deep); color:var(--paper);}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-coral{background:var(--coral); color:#fff;}
+  .btn-ghost{background:transparent; color:var(--ink-soft); border:1px solid var(--line);}
+  .btn-gold{background:var(--gold); color:#3a2c0d;}
+  .btn-block{width:100%;}
+  .btn-lg{padding:16px 20px; font-size:15px; border-radius:14px;}
+
+  /* ---------- session view ---------- */
+  .session-head{display:flex; align-items:center; gap:10px; margin-bottom:16px;}
+  .back-btn{
+    width:34px;height:34px;border-radius:10px;background:var(--card); border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center; cursor:pointer; flex:none;
+  }
+  .dots-row{display:flex; gap:5px; margin-bottom:20px;}
+  .dot{width:100%; height:5px; border-radius:99px; background:var(--paper-2); overflow:hidden;}
+  .dot .fill{height:100%; background:var(--jade); width:0%; transition:width .3s ease;}
+
+  .station-card{
+    background:var(--card); border:1px solid var(--line); border-radius:22px;
+    padding:26px 22px; box-shadow:var(--shadow); text-align:center; margin-bottom:16px;
+    position:relative; overflow:hidden;
+  }
+  .station-icon{
+    width:64px;height:64px;border-radius:18px; margin:0 auto 16px;
+    background:var(--jade-deep); display:flex; align-items:center; justify-content:center;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.15);
+  }
+  .station-icon svg{width:30px;height:30px; color:var(--paper);}
+  .station-name{font-family:'Fraunces',serif; font-weight:600; font-size:21px; margin-bottom:8px;}
+  .station-prompt{font-size:14.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:20px;}
+
+  .timer-ring-wrap{position:relative; width:150px; height:150px; margin:0 auto 18px;}
+  .timer-ring-wrap svg{transform:rotate(-90deg);}
+  .timer-label{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .timer-num{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:26px;}
+  .timer-word{font-size:10.5px; color:var(--ink-soft); letter-spacing:0.06em; text-transform:uppercase; margin-top:2px;}
+
+  .timer-controls{display:flex; gap:10px; justify-content:center; margin-bottom:6px;}
+  .chip-row{display:flex; gap:8px; justify-content:center; margin-bottom:18px; flex-wrap:wrap;}
+  .chip{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:6px 12px; border-radius:999px;
+    background:var(--paper-2); border:1px solid var(--line); cursor:pointer; color:var(--ink-soft);
+  }
+  .chip.active{background:var(--jade-deep); color:var(--paper); border-color:var(--jade-deep);}
+
+  .action-row{display:flex; gap:10px; margin-top:6px;}
+
+  /* ---------- toast / burst ---------- */
+  #toast-layer{position:fixed; inset:0; pointer-events:none; z-index:100;}
+  .toast{
+    position:fixed; left:50%; top:22px; transform:translateX(-50%) translateY(-20px);
+    background:var(--jade-deep); color:var(--paper);
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px; font-weight:500;
+    padding:10px 16px; border-radius:999px; box-shadow:0 8px 24px -8px rgba(0,0,0,0.4);
+    opacity:0; transition: all .35s cubic-bezier(.2,.9,.3,1.3);
+    display:flex; align-items:center; gap:8px; white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .confetti-piece{
+    position:fixed; top:-10px; width:8px; height:12px; border-radius:2px; opacity:0.95;
+    animation: fall linear forwards;
+  }
+  @keyframes fall{
+    to{ transform: translateY(110vh) rotate(600deg); opacity:0; }
+  }
+
+  /* ---------- accountability ---------- */
+  .accord{
+    background:var(--card); border:1px solid var(--line); border-radius:18px; padding:16px 18px;
+    margin-bottom:14px; box-shadow:var(--shadow);
+  }
+  .accord-label{font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); margin-bottom:8px; display:flex; align-items:center; gap:6px;}
+  textarea, input[type=text]{
+    width:100%; font-family:'Inter',sans-serif; font-size:14px; color:var(--ink);
+    background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+    resize:none; outline:none;
+  }
+  textarea:focus, input[type=text]:focus{border-color:var(--jade);}
+  .nudge-banner{
+    background:linear-gradient(135deg, rgba(189,98,72,0.10), var(--card));
+    border:1px solid rgba(189,98,72,0.25); border-radius:16px; padding:14px 16px; margin-bottom:18px;
+    font-size:13.5px; line-height:1.55; color:var(--ink);
+  }
+  .nudge-banner b{font-family:'Fraunces',serif;}
+
+  .badge-row{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
+  .badge-chip{
+    display:flex; align-items:center; gap:6px; background:var(--paper-2); border:1px solid var(--line);
+    padding:6px 10px; border-radius:999px; font-size:11.5px; font-family:'IBM Plex Mono',monospace;
+  }
+  .badge-chip.locked{opacity:0.4;}
+
+  .screen{animation: fadein .28s ease;}
+  @keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .hidden{display:none !important;}
+
+  ::selection{background:rgba(63,107,90,0.25);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.01ms !important; transition-duration:0.01ms !important;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#EEEAE1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>
+        </div>
+        <div class="brand-name">The Shelf</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <div class="stat-pill"><span class="flame">🔥</span><span class="n" id="streak-count">0</span></div>
+        <div class="stat-pill"><span style="font-size:12px;">✦</span><span class="n" id="points-count">0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <main id="main"></main>
+
+</div>
+<div id="toast-layer"></div>
+
+<script>
+/* ====================== CONTENT ====================== */
+const CATEGORIES = [
+  {
+    id:'clothes', title:'Clothes', sub:'Start where the pile is biggest', icon:'shirt',
+    prompt:"Pull every piece of clothing you own onto one surface — the bed works well. Seeing the true volume is the point.",
+    stations:[
+      {name:'Gather the pile', prompt:'Every item, from every drawer, closet, and floor corner, into one heap. Nothing sorted yet — just gathered.', minutes:10},
+      {name:'Tops', prompt:'Pick up each top. Hold it for a beat. Keep what feels like a yes.', minutes:12},
+      {name:'Bottoms', prompt:'Same motion — pants, skirts, shorts. One at a time, no overthinking.', minutes:10},
+      {name:'Dresses & outerwear', prompt:'Dresses, jackets, coats. These carry the most memory — go slow if you need to.', minutes:10},
+      {name:'Shoes & bags', prompt:'Line them up. Which ones do you actually reach for?', minutes:8},
+      {name:'Fold & return', prompt:'Fold keepers so they stand upright in the drawer. Everything gets a visible home.', minutes:12},
+    ]
+  },
+  {
+    id:'books', title:'Books', sub:'Every book, every shelf', icon:'book',
+    prompt:"Gather every book into one stack. You'll be surprised how many you forgot you owned.",
+    stations:[
+      {name:'Gather the pile', prompt:'Every book in the space, into one stack, on the floor.', minutes:8},
+      {name:'Touch each one', prompt:'Pick each book up. Not the contents — the feeling of holding it now.', minutes:15},
+      {name:'The maybe pile', prompt:'For anything you paused on: would you read it again in the next year? If not, thank it and let it go.', minutes:8},
+      {name:'Shelve the keepers', prompt:'Group by how they make you feel, not alphabetically. Spines facing out, easy to see.', minutes:8},
+    ]
+  },
+  {
+    id:'papers', title:'Papers', sub:'The category nobody enjoys', icon:'file',
+    prompt:"Papers don't spark joy by nature — the rule here is simpler: discard everything except what you need right now.",
+    stations:[
+      {name:'Gather the pile', prompt:'Mail, receipts, folders, loose papers — every flat surface, into one pile.', minutes:10},
+      {name:'Sort: needed / pending / sentimental', prompt:'Three piles. Needed = active use. Pending = requires action. Sentimental = goes to that category later.', minutes:12},
+      {name:'Shred & recycle', prompt:'Everything not in those three piles goes. Don\'t reread — you already decided.', minutes:8},
+      {name:'File what remains', prompt:'A simple system: one folder for needed, one for pending. Done beats perfect here.', minutes:10},
+    ]
+  },
+  {
+    id:'komono', title:'Komono', sub:'Miscellaneous — kitchen, bath, tech, everything else', icon:'box',
+    prompt:"The broadest category. Break it into rooms so it doesn't swallow you whole.",
+    stations:[
+      {name:'Desk & tech', prompt:'Cables, chargers, old devices, office supplies. If you can\'t name what it\'s for, it goes.', minutes:12},
+      {name:'Bathroom & skincare', prompt:'Check expiry dates honestly. Half-used products you don\'t reach for can go.', minutes:10},
+      {name:'Kitchen extras', prompt:'Gadgets, mugs, containers with no lids. Keep what you use monthly.', minutes:12},
+      {name:'Everything else', prompt:'The drawer of miscellany. One pass, no rereading old receipts of intent.', minutes:12},
+    ]
+  },
+  {
+    id:'sentimental', title:'Sentimental', sub:'Saved for last — you\'re ready now', icon:'heart',
+    prompt:"This category comes last for a reason: by now you've practiced the decision-making muscle on lower-stakes items.",
+    stations:[
+      {name:'Photos', prompt:'Sort loose photos. Keep the ones that genuinely bring the memory back, not every duplicate.', minutes:15},
+      {name:'Letters & keepsakes', prompt:'Read only if you want to. The memory already lives in you — the object is optional.', minutes:15},
+      {name:'Gifts you don\'t use', prompt:'A gift\'s job was to carry the feeling at the moment it was given. That job is already done.', minutes:10},
+      {name:'Curate a keepsake box', prompt:'One box, one shelf. What earns a permanent place?', minutes:10},
+    ]
+  },
+];
+
+const ICONS = {
+  shirt:'<path d="M6 3l3 2 3-2 3 2 3-2 2 5-3 2v11H6V10L3 8l3-5z"/>',
+  book:'<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>',
+  file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+  box:'<path d="M21 8L12 3 3 8l9 5 9-5z"/><path d="M3 8v10l9 5 9-5V8"/><path d="M12 13v10"/>',
+  heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/>',
+  check:'<path d="M20 6L9 17l-5-5"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  chevronLeft:'<path d="M15 18l-6-6 6-6"/>',
+  pause:'<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>',
+  play:'<path d="M5 3l16 9-16 9V3z"/>',
+  reset:'<path d="M1 4v6h6"/><path d="M3.5 15a9 9 0 1 0 2-9.5L1 10"/>',
+};
+function icon(name, extra=''){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${extra}>${ICONS[name]}</svg>`; }
+
+const LEVELS = [
+  {min:0, title:'Folder'},
+  {min:150, title:'Sorter'},
+  {min:400, title:'Space Maker'},
+  {min:800, title:'Joy Curator'},
+  {min:1400, title:'Keeper of the Shelf'},
+];
+function levelFor(pts){ let l = LEVELS[0]; for(const lvl of LEVELS){ if(pts>=lvl.min) l=lvl; } return l; }
+
+const BADGES = [
+  {id:'clothes', label:'Closet cleared'},
+  {id:'books', label:'Shelf sorted'},
+  {id:'papers', label:'Paper tamed'},
+  {id:'komono', label:'Komono handled'},
+  {id:'sentimental', label:'Full circle'},
+];
+
+/* ====================== STATE ====================== */
+let state = {
+  onboarded:false,
+  roomName:'',
+  points:0,
+  streak:0,
+  lastActiveDate:null,
+  progress:{}, // { categoryId: [bool,...] }
+  reward:'',
+  nudge:'',
+};
+
+const STORAGE_KEY = 'konmari-state-v1';
+
+async function loadState(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY);
+    if(res && res.value){
+      state = Object.assign(state, JSON.parse(res.value));
+    }
+  }catch(e){ /* first run, no saved state */ }
+  CATEGORIES.forEach(c=>{
+    if(!state.progress[c.id]) state.progress[c.id] = c.stations.map(()=>false);
+  });
+  applyStreakCheck();
+  render();
+}
+async function saveState(){
+  try{ await window.storage.set(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ console.error('save failed', e); }
+}
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function applyStreakCheck(){
+  if(!state.lastActiveDate) return;
+  const last = new Date(state.lastActiveDate);
+  const today = new Date(todayStr());
+  const diffDays = Math.round((today-last)/(1000*60*60*24));
+  if(diffDays >= 2){
+    state.streak = 0; // missed a day+ — gentle reset, shown via nudge banner
+  }
+}
+function markActiveToday(){
+  const t = todayStr();
+  if(state.lastActiveDate === t) return;
+  const last = state.lastActiveDate ? new Date(state.lastActiveDate) : null;
+  const today = new Date(t);
+  if(last){
+    const diffDays = Math.round((today-last)/(1000*60*60*24));
+    state.streak = diffDays === 1 ? state.streak+1 : 1;
+  } else {
+    state.streak = 1;
+  }
+  state.lastActiveDate = t;
+}
+
+/* ====================== NAV ====================== */
+let route = {name:'home'};
+function nav(r){ route = r; render(); window.scrollTo({top:0, behavior:'smooth'}); }
+
+/* ====================== RENDER ====================== */
+const mainEl = document.getElementById('main');
+
+function render(){
+  document.getElementById('streak-count').textContent = state.streak;
+  document.getElementById('points-count').textContent = state.points;
+
+  if(!state.onboarded){ renderOnboarding(); return; }
+  if(route.name==='home') renderHome();
+  else if(route.name==='session') renderSession();
+  else if(route.name==='settings') renderSettings();
+}
+
+/* ---------- onboarding ---------- */
+function renderOnboarding(){
+  mainEl.innerHTML = `
+  <div class="screen" style="padding-top:8px;">
+    <div class="eyebrow">Before you begin</div>
+    <h1 class="title">What room are we clearing?</h1>
+    <p class="sub">You'll move through five categories in order — clothes, books, papers, miscellany, then sentimental items. That order is deliberate: it saves the hardest decisions for when you've had practice.</p>
+
+    <div class="accord">
+      <div class="accord-label">${icon('box')} Room or space</div>
+      <input type="text" id="room-input" placeholder="e.g. Bedroom, Studio, Closet" />
+    </div>
+
+    <div class="accord">
+      <div class="accord-label">${icon('heart')} Your reward for finishing (optional)</div>
+      <input type="text" id="reward-input" placeholder="e.g. Order the ramen place, new candle" />
+    </div>
+
+    <div class="accord">
+      <div class="accord-label">${icon('file')} A gentle nudge if you skip a day (optional)</div>
+      <textarea id="nudge-input" rows="2" placeholder="e.g. 'Ten minutes is still a win — go touch one shelf.'"></textarea>
+    </div>
+
+    <button class="btn btn-primary btn-block btn-lg" onclick="finishOnboarding()">Set up the shelf</button>
+  </div>`;
+}
+function finishOnboarding(){
+  const room = document.getElementById('room-input').value.trim();
+  state.roomName = room || 'Your space';
+  state.reward = document.getElementById('reward-input').value.trim();
+  state.nudge = document.getElementById('nudge-input').value.trim();
+  state.onboarded = true;
+  saveState();
+  render();
+}
+
+/* ---------- home ---------- */
+function categoryPct(c){
+  const arr = state.progress[c.id];
+  const done = arr.filter(Boolean).length;
+  return {done, total:arr.length, pct: Math.round((done/arr.length)*100)};
+}
+function overallPct(){
+  let done=0, total=0;
+  CATEGORIES.forEach(c=>{ const p=categoryPct(c); done+=p.done; total+=p.total; });
+  return {done, total, pct: total ? Math.round((done/total)*100) : 0};
+}
+function isUnlocked(idx){
+  if(idx===0) return true;
+  const prev = CATEGORIES[idx-1];
+  return categoryPct(prev).pct === 100;
+}
+
+function renderHome(){
+  const ov = overallPct();
+  const lvl = levelFor(state.points);
+  const circumference = 2*Math.PI*36;
+  const dash = circumference * (ov.pct/100);
+
+  let nudgeHtml = '';
+  if(state.nudge && state.lastActiveDate){
+    const last = new Date(state.lastActiveDate);
+    const diff = Math.round((new Date(todayStr())-last)/(1000*60*60*24));
+    if(diff >= 1){
+      nudgeHtml = `<div class="nudge-banner"><b>It's been a bit.</b><br>${escapeHtml(state.nudge)}</div>`;
+    }
+  }
+
+  let shelfHtml = CATEGORIES.map((c, idx)=>{
+    const p = categoryPct(c);
+    const unlocked = isUnlocked(idx);
+    const isDone = p.pct===100;
+    const isCurrent = unlocked && !isDone;
+    let cls = 'box-card';
+    if(!unlocked) cls += ' locked';
+    else if(isCurrent) cls += ' current';
+    else if(isDone) cls += ' done';
+
+    return `
+    <div class="${cls}" onclick="${unlocked ? `openCategory('${c.id}')` : ''}">
+      <div class="box-num">0${idx+1}</div>
+      <div class="box-icon ${unlocked ? '' : 'locked-icon'}">${icon(c.icon)}</div>
+      <div class="box-body">
+        <div class="box-title">${c.title}</div>
+        <div class="box-sub">${isDone ? 'Complete' : unlocked ? `${p.done} of ${p.total} stations` : 'Locked'}</div>
+        ${unlocked ? `<div class="box-progress-track"><div class="box-progress-fill" style="width:${p.pct}%"></div></div>` : ''}
+      </div>
+      ${isDone ? `<div class="box-seal">${icon('check')}</div>` : (!unlocked ? `<div class="lock-badge">${icon('lock')}</div>` : '')}
+    </div>`;
+  }).join('');
+
+  const badgesHtml = BADGES.map(b=>{
+    const done = categoryPct(CATEGORIES.find(c=>c.id===b.id)).pct===100;
+    return `<div class="badge-chip ${done?'':'locked'}">${done ? '✦' : icon('lock')} ${b.label}</div>`;
+  }).join('');
+
+  mainEl.innerHTML = `
+  <div class="screen">
+    <div class="eyebrow">${state.roomName}</div>
+    <h1 class="title">The Shelf</h1>
+    <p class="sub">Five categories, one at a time. Complete a category to unlock the next.</p>
+
+    ${nudgeHtml}
+
+    <div class="ring-card">
+      <div class="ring-wrap">
+        <svg width="84" height="84">
+          <circle cx="42" cy="42" r="36" stroke="var(--paper-2)" stroke-width="7" fill="none"/>
+          <circle cx="42" cy="42" r="36" stroke="var(--jade)" stroke-width="7" fill="none"
+            stroke-dasharray="${circumference}" stroke-dashoffset="${circumference-dash}" stroke-linecap="round"/>
+        </svg>
+        <div class="ring-label"><div class="pct">${ov.pct}%</div><div class="pct-sub">tidied</div></div>
+      </div>
+      <div class="ring-meta">
+        <div class="room-name">${ov.done} of ${ov.total} stations done</div>
+        <div class="room-line">${state.points} joy points earned</div>
+        <div class="level-tag">✦ ${lvl.title}</div>
+      </div>
+    </div>
+
+    <div class="shelf">${shelfHtml}</div>
+
+    <div class="badge-row">${badgesHtml}</div>
+
+    <div style="margin-top:20px;">
+      <button class="btn btn-ghost btn-block" onclick="nav({name:'settings'})">Edit reward & nudge</button>
+    </div>
+  </div>`;
+}
+
+/* ---------- session ---------- */
+let timerState = { seconds:0, total:0, running:false, intervalId:null };
+
+function openCategory(catId){
+  const cat = CATEGORIES.find(c=>c.id===catId);
+  const arr = state.progress[catId];
+  let firstUndone = arr.findIndex(v=>!v);
+  if(firstUndone === -1) firstUndone = arr.length-1;
+  nav({name:'session', catId, stationIdx:firstUndone});
+}
+
+function renderSession(){
+  const cat = CATEGORIES.find(c=>c.id===route.catId);
+  const arr = state.progress[cat.id];
+  const idx = route.stationIdx;
+  const station = cat.stations[idx];
+  const done = arr[idx];
+
+  const dots = cat.stations.map((s,i)=>`
+    <div class="dot"><div class="fill" style="width:${arr[i] ? '100%' : (i===idx?'35%':'0%')}"></div></div>
+  `).join('');
+
+  mainEl.innerHTML = `
+  <div class="screen">
+    <div class="session-head">
+      <div class="back-btn" onclick="nav({name:'home'})">${icon('chevronLeft')}</div>
+      <div>
+        <div class="eyebrow" style="margin:0;">${cat.title} · Station ${idx+1} of ${cat.stations.length}</div>
+      </div>
+    </div>
+
+    <div class="dots-row">${dots}</div>
+
+    <div class="station-card" id="station-card">
+      <div class="station-icon">${icon(cat.icon)}</div>
+      <div class="station-name">${station.name}</div>
+      <div class="station-prompt">${station.prompt}</div>
+
+      <div class="timer-ring-wrap" id="timer-ring"></div>
+
+      <div class="chip-row" id="chip-row">
+        ${[5,10,15,20].map(m=>`<div class="chip ${m===station.minutes?'active':''}" data-m="${m}" onclick="setTimerMinutes(${m})">${m} min</div>`).join('')}
+      </div>
+
+      <div class="timer-controls">
+        <button class="btn btn-ghost" onclick="toggleTimer()" id="timer-toggle-btn">${icon('play')} Start</button>
+        <button class="btn btn-ghost" onclick="resetTimer()">${icon('reset')} Reset</button>
+      </div>
+    </div>
+
+    <div class="action-row">
+      ${idx>0 ? `<button class="btn btn-ghost" onclick="nav({name:'session', catId:'${cat.id}', stationIdx:${idx-1}})">Back</button>` : ''}
+      <button class="btn ${done ? 'btn-ghost' : 'btn-primary'} btn-block" onclick="completeStation('${cat.id}', ${idx})">
+        ${done ? 'Already marked done — redo?' : `${icon('check')} Mark done · +20`}
+      </button>
+    </div>
+  </div>`;
+
+  setTimerMinutes(station.minutes, true);
+}
+
+function setTimerMinutes(m, silent){
+  clearInterval(timerState.intervalId);
+  timerState.total = m*60;
+  timerState.seconds = m*60;
+  timerState.running = false;
+  drawTimerRing();
+  if(!silent){
+    document.querySelectorAll('#chip-row .chip').forEach(c=>c.classList.toggle('active', parseInt(c.dataset.m)===m));
+  }
+  const btn = document.getElementById('timer-toggle-btn');
+  if(btn) btn.innerHTML = `${icon('play')} Start`;
+}
+
+function drawTimerRing(){
+  const wrap = document.getElementById('timer-ring');
+  if(!wrap) return;
+  const r=66, c=2*Math.PI*r;
+  const pct = timerState.total ? (timerState.seconds/timerState.total) : 0;
+  const dash = c*pct;
+  const mm = String(Math.floor(timerState.seconds/60)).padStart(2,'0');
+  const ss = String(timerState.seconds%60).padStart(2,'0');
+  wrap.innerHTML = `
+    <svg width="150" height="150">
+      <circle cx="75" cy="75" r="${r}" stroke="var(--paper-2)" stroke-width="8" fill="none"/>
+      <circle cx="75" cy="75" r="${r}" stroke="${timerState.seconds===0 ? 'var(--gold)' : 'var(--jade)'}" stroke-width="8" fill="none"
+        stroke-dasharray="${c}" stroke-dashoffset="${c-dash}" stroke-linecap="round" style="transition:stroke-dashoffset 1s linear"/>
+    </svg>
+    <div class="timer-label"><div class="timer-num">${mm}:${ss}</div><div class="timer-word">${timerState.seconds===0?'time\'s up':timerState.running?'focusing':'ready'}</div></div>
+  `;
+}
+
+function toggleTimer(){
+  const btn = document.getElementById('timer-toggle-btn');
+  if(timerState.running){
+    clearInterval(timerState.intervalId);
+    timerState.running = false;
+    btn.innerHTML = `${icon('play')} Resume`;
+  } else {
+    if(timerState.seconds<=0) return;
+    timerState.running = true;
+    btn.innerHTML = `${icon('pause')} Pause`;
+    timerState.intervalId = setInterval(()=>{
+      timerState.seconds--;
+      drawTimerRing();
+      if(timerState.seconds<=0){
+        clearInterval(timerState.intervalId);
+        timerState.running = false;
+        btn.innerHTML = `${icon('play')} Restart`;
+        showToast('⏱ Time\'s up — mark the station done when ready');
+      }
+    }, 1000);
+  }
+}
+function resetTimer(){
+  const active = document.querySelector('#chip-row .chip.active');
+  const m = active ? parseInt(active.dataset.m) : 10;
+  setTimerMinutes(m);
+}
+
+function completeStation(catId, idx){
+  const cat = CATEGORIES.find(c=>c.id===catId);
+  const arr = state.progress[catId];
+  const wasAlready = arr[idx];
+  arr[idx] = true;
+  clearInterval(timerState.intervalId);
+
+  if(!wasAlready){
+    state.points += 20;
+    markActiveToday();
+    burst(14);
+    showToast(`✦ +20 joy points`);
+  }
+
+  const allDone = arr.every(Boolean);
+  if(allDone && !wasAlready){
+    state.points += 60;
+    setTimeout(()=>{ burst(30); showToast(`🎉 ${cat.title} complete — +60 bonus`); }, 350);
+  }
+  saveState();
+
+  if(allDone){
+    setTimeout(()=> nav({name:'home'}), 900);
+  } else if(idx < cat.stations.length-1){
+    setTimeout(()=> nav({name:'session', catId, stationIdx:idx+1}), 500);
+  } else {
+    setTimeout(()=> nav({name:'home'}), 700);
+  }
+}
+
+/* ---------- settings ---------- */
+function renderSettings(){
+  mainEl.innerHTML = `
+  <div class="screen">
+    <div class="session-head">
+      <div class="back-btn" onclick="nav({name:'home'})">${icon('chevronLeft')}</div>
+      <div class="eyebrow" style="margin:0;">Settings</div>
+    </div>
+    <h1 class="title">Reward &amp; nudge</h1>
+    <p class="sub">These are just for you — they show up on the home screen to keep you honest and motivated.</p>
+
+    <div class="accord">
+      <div class="accord-label">${icon('heart')} Reward for finishing the room</div>
+      <input type="text" id="s-reward" value="${escapeAttr(state.reward)}" placeholder="e.g. Order the ramen place" />
+    </div>
+    <div class="accord">
+      <div class="accord-label">${icon('file')} Gentle nudge if a day is skipped</div>
+      <textarea id="s-nudge" rows="3" placeholder="Keep this kind — it should pull you back in, not guilt you.">${escapeHtml(state.nudge)}</textarea>
+    </div>
+    <div class="accord">
+      <div class="accord-label">${icon('box')} Room name</div>
+      <input type="text" id="s-room" value="${escapeAttr(state.roomName)}" />
+    </div>
+
+    <button class="btn btn-primary btn-block btn-lg" onclick="saveSettings()">${icon('check')} Save</button>
+
+    <div style="margin-top:24px; text-align:center;">
+      <span style="font-size:12px; color:var(--ink-soft); cursor:pointer; text-decoration:underline;" onclick="if(confirm('Reset all progress? This cannot be undone.')) resetAll()">Reset all progress</span>
+    </div>
+  </div>`;
+}
+function saveSettings(){
+  state.reward = document.getElementById('s-reward').value.trim();
+  state.nudge = document.getElementById('s-nudge').value.trim();
+  state.roomName = document.getElementById('s-room').value.trim() || 'Your space';
+  saveState();
+  nav({name:'home'});
+}
+function resetAll(){
+  state = {onboarded:false, roomName:'', points:0, streak:0, lastActiveDate:null, progress:{}, reward:'', nudge:''};
+  saveState();
+  render();
+}
+
+/* ---------- effects ---------- */
+function showToast(msg){
+  const layer = document.getElementById('toast-layer');
+  const t = document.createElement('div');
+  t.className='toast';
+  t.textContent = msg;
+  layer.appendChild(t);
+  requestAnimationFrame(()=> t.classList.add('show'));
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(), 400); }, 2200);
+}
+function burst(n){
+  const colors = ['#3F6B5A','#C79A46','#BD6248','#2C4C40'];
+  for(let i=0;i<n;i++){
+    const el = document.createElement('div');
+    el.className='confetti-piece';
+    el.style.left = (45 + Math.random()*10) + 'vw';
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.animationDuration = (1.4 + Math.random()*1.2) + 's';
+    el.style.transform = `rotate(${Math.random()*360}deg)`;
+    document.getElementById('toast-layer').appendChild(el);
+    setTimeout(()=>el.remove(), 3000);
+  }
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+/* ====================== INIT ====================== */
+loadState();
+</script>
+</body>
+</html>
